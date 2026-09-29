@@ -962,6 +962,7 @@ def _create_xccl2_process_group(
         raise AssertionError(
             "Expected backend_options argument to be of type ProcessGroupXCCL2.Options"
         )
+    print("_create_xccl2_process_group")
     pg_options.global_ranks_in_group = opts.global_ranks_in_group
     pg_options.group_name = opts.group_id
     # pyrefly: ignore [bad-argument-type]
