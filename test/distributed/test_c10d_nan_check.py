@@ -45,6 +45,8 @@ class AbstractNanCheckHookTest(C10dBackendTest):
             }
 
     def _assert_nan_detected(self, tensor):
+        if not self.detects_nan_in_collectives:
+            self.skipTest(f"{self.backend_name} does not report NaN detections")
         if self.device_type == "cuda":
             with core_dumps_disabled():
                 try:
@@ -130,8 +132,8 @@ class AbstractNanCheckHookTest(C10dBackendTest):
 
         NanCheckHook.attach(dist.group.WORLD).remove()
         dist.all_reduce(t)
-        if self.device_type == "cuda":
-            torch.cuda.synchronize()
+        if self.device_type != "cpu":
+            self.device_module.synchronize()
 
     def test_env_var_auto_attach(self):
         os.environ["TORCH_DIST_NAN_CHECK"] = "1"
