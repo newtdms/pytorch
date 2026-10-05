@@ -803,16 +803,6 @@ c10::intrusive_ptr<WorkXCCL> ProcessGroupXCCL::broadcastImpl(
 
   work->recordStart("broadcast");
 
-  // No-op for empty tensor
-  // TODO: Consider removing this check once oneCCL supports zero-sized tensors
-  // in broadcast operation.
-  if (tensor.numel() == 0) [[unlikely]] {
-    TC_LOG(WARNING, this) << "XCCL broadcast called with empty tensor";
-    work->recordEnd();
-    enqueueWork(work, stream);
-    return work;
-  }
-
   const auto dataType = getXcclDataType(tensor);
   XCCL_CHECK(
       xccl_api_,
@@ -851,16 +841,6 @@ c10::intrusive_ptr<WorkXCCL> ProcessGroupXCCL::all_reduce(
                        : createWork(stream, timeout);
 
   work->recordStart("all_reduce");
-
-  // No-op for empty input tensor
-  // TODO: Consider removing this check once oneCCL supports zero-sized tensors
-  // for all_reduce operation.
-  if (tensor.numel() == 0) [[unlikely]] {
-    TC_LOG(WARNING, this) << "XCCL all_reduce called with empty input tensor";
-    work->recordEnd();
-    enqueueWork(work, stream);
-    return work;
-  }
 
   // all_reduce is in place, so PREMUL_SUM scales the caller's buffer directly
   // rather than a clone. See getMaybeScaledInputsAndNewOp for the oneCCL
@@ -921,16 +901,6 @@ c10::intrusive_ptr<WorkXCCL> ProcessGroupXCCL::reduceImpl(
                        : createWork(stream, timeout);
 
   work->recordStart("reduce");
-
-  // No-op for empty input tensor
-  // TODO: Consider removing this check once oneCCL supports zero-sized tensors
-  // in reduce operations.
-  if (tensor.numel() == 0) [[unlikely]] {
-    TC_LOG(WARNING, this) << "XCCL reduce called with empty input tensor";
-    work->recordEnd();
-    enqueueWork(work, stream);
-    return work;
-  }
 
   const auto [maybe_scaled_tensor, maybe_new_op] =
       getMaybeScaledInputsAndNewOp(tensor, op, stream);
@@ -1003,16 +973,6 @@ c10::intrusive_ptr<WorkXCCL> ProcessGroupXCCL::all_gather(
 
   work->recordStart("all_gather");
 
-  // No-op for empty input tensor
-  // TODO: Consider removing this check once oneCCL supports zero-sized tensors
-  // in allGather operations.
-  if (!uneven && tensor.numel() == 0) [[unlikely]] {
-    TC_LOG(WARNING, this) << "XCCL all_gather called with empty input tensor";
-    work->recordEnd();
-    enqueueWork(work, stream);
-    return work;
-  }
-
   if (uneven) {
     // oneCCL has no all_gatherv, so an uneven gather is issued as one grouped
     // broadcast per rank.
@@ -1065,7 +1025,10 @@ c10::intrusive_ptr<WorkXCCL> ProcessGroupXCCL::all_gather(
             stream),
         "XCCL allGather failed in all_gather");
 
-    copyFlattenedTensorToTensors(output_flattened, tensor_list, stream);
+    if (output_flattened.numel() != 0) [[likely]] {
+        copyFlattenedTensorToTensors(
+        output_flattened, tensor_list, stream);
+    }
   }
 
   work->recordEnd();
@@ -1102,17 +1065,6 @@ c10::intrusive_ptr<WorkXCCL> ProcessGroupXCCL::allGatherSingleImpl(
                        : createWork(stream, timeout);
 
   work->recordStart("allGatherSingleImpl");
-
-  // No-op for empty input tensor
-  // TODO: Consider removing this check once oneCCL supports zero-sized tensors
-  // in allGather operations.
-  if (input.numel() == 0) [[unlikely]] {
-    TC_LOG(WARNING, this)
-        << "XCCL allGatherSingleImpl called with empty input tensor";
-    work->recordEnd();
-    enqueueWork(work, stream);
-    return work;
-  }
 
   XCCL_CHECK(
       xccl_api_,
@@ -1283,17 +1235,6 @@ c10::intrusive_ptr<WorkXCCL> ProcessGroupXCCL::reduceScatterSingleImpl(
 
   work->recordStart("reduceScatterSingleImpl");
 
-  // No-op for empty input tensor
-  // TODO: Consider removing this check once oneCCL supports zero-sized tensors
-  // in reduce operations.
-  if (input.numel() == 0) [[unlikely]] {
-    TC_LOG(WARNING, this)
-        << "XCCL reduceScatterSingleImpl called with empty input tensor";
-    work->recordEnd();
-    enqueueWork(work, stream);
-    return work;
-  }
-
   const auto [maybe_scaled_input, maybe_new_op] =
       getMaybeScaledInputsAndNewOp(input, op, stream);
 
@@ -1354,15 +1295,6 @@ c10::intrusive_ptr<WorkXCCL> ProcessGroupXCCL::allToAllSingleImpl(
                        : createWork(stream, timeout);
 
   work->recordStart("allToAllSingleImpl");
-
-  // No-op for empty input tensor
-  // TODO: Consider removing this check once oneCCL supports zero-sized tensors
-  // in allToAll operations.
-  if (input.numel() == 0) [[unlikely]] {
-    work->recordEnd();
-    enqueueWork(work, stream);
-    return work;
-  }
 
   size_t chunk_size = input.numel() / comm_size_;
   const auto dataType = getXcclDataType(input);
@@ -1736,16 +1668,6 @@ c10::intrusive_ptr<WorkXCCL> ProcessGroupXCCL::scatterImpl(
 
   work->recordStart("scatter");
 
-  // No-op for empty input tensor
-  // TODO: Remove this check once oneCCL supports zero-sized tensors
-  // in scatter operations.
-  if (output_tensor.numel() == 0) [[unlikely]] {
-    TC_LOG(WARNING, this) << "XCCL scatter called with empty tensor";
-    work->recordEnd();
-    enqueueWork(work, stream);
-    return work;
-  }
-
   // Unlike the NCCL implementation which groups only the send operations,
   // we group both send and receive operations to avoid a hang in oneCCL.
   // See https://github.com/uxlfoundation/oneCCL/issues/193 for details.
@@ -1853,16 +1775,6 @@ c10::intrusive_ptr<WorkXCCL> ProcessGroupXCCL::gatherImpl(
                        : createWork(stream, timeout);
 
   work->recordStart("gather");
-
-  // No-op for empty input tensor
-  // TODO: Consider removing this check once oneCCL supports zero-sized tensors
-  // in send/recv operations.
-  if (input_tensor.numel() == 0) [[unlikely]] {
-    TC_LOG(WARNING, this) << "XCCL gather called with empty input tensor";
-    work->recordEnd();
-    enqueueWork(work, stream);
-    return work;
-  }
 
   // Unlike the NCCL implementation which groups only the send operations,
   // we group both send and receive operations to avoid a hang in oneCCL.
