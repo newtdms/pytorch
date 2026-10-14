@@ -236,7 +236,10 @@ ProcessGroupXCCL::~ProcessGroupXCCL() {
 }
 
 void ProcessGroupXCCL::init(at::Device device) {
-  TC_LOG(INFO, this) << "Initializing ProcessGroupXCCL for device: " << device;
+  // Also named "ProcessGroupXCCL" in third_party/torch-xpu-ops; tag with the
+  // backend name explicitly so logs don't get mistaken for that backend.
+  TC_LOG(INFO, this) << "Initializing ProcessGroupXCCL (" << kBackendName
+                     << ") for device: " << device;
   device_ = device;
 
   if (init_state_ == InitializationState::INITIALIZED) {
@@ -273,7 +276,8 @@ void ProcessGroupXCCL::init(at::Device device) {
   init_state_ = InitializationState::INITIALIZED;
   TracingGuard tracingGuard(name_, comm_size_, "init", rank_);
 
-  TC_LOG(INFO, this) << "ProcessGroupXCCL initialized for rank: " << rank_;
+  TC_LOG(INFO, this) << "ProcessGroupXCCL (" << kBackendName
+                     << ") initialized for rank: " << rank_;
 }
 
 void ProcessGroupXCCL::initFromComm(
@@ -294,8 +298,8 @@ void ProcessGroupXCCL::initFromComm(
   init_state_ = InitializationState::INITIALIZED;
   TracingGuard tracingGuard(name_, comm_size_, "init", rank_);
 
-  TC_LOG(INFO, this) << "ProcessGroupXCCL initialized from split for rank: "
-                     << rank_;
+  TC_LOG(INFO, this) << "ProcessGroupXCCL (" << kBackendName
+                     << ") initialized from split for rank: " << rank_;
 }
 
 c10::intrusive_ptr<::c10d::Backend> ProcessGroupXCCL::split(
@@ -421,7 +425,8 @@ void ProcessGroupXCCL::initXcclResources() {
 
   xccl_api_->setVersionInfo();
   backend_version_ = std::to_string(xccl_api_->getVersion());
-  TC_LOG(INFO, this) << "XCCL Version: " << xccl_api_->getVersion()
+  TC_LOG(INFO, this) << "[" << kBackendName
+                     << "] oneCCL Version: " << xccl_api_->getVersion()
                      << " (Major: " << xccl_api_->getMajorVersion()
                      << " Minor: " << xccl_api_->getMinorVersion()
                      << " Patch: " << xccl_api_->getPatchVersion() << ")";
