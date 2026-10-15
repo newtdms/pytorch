@@ -274,7 +274,7 @@ void ProcessGroupXCCL::init(at::Device device) {
   initXcclResources();
 
   init_state_ = InitializationState::INITIALIZED;
-  TracingGuard tracingGuard(name_, comm_size_, "init", rank_);
+  TracingGuard tracingGuard(name_, comm_size_, "init", rank_, sequence_number_);
 
   TC_LOG(INFO, this) << "ProcessGroupXCCL (" << kBackendName
                      << ") initialized for rank: " << rank_;
@@ -296,7 +296,7 @@ void ProcessGroupXCCL::initFromComm(
   initXcclResources();
 
   init_state_ = InitializationState::INITIALIZED;
-  TracingGuard tracingGuard(name_, comm_size_, "init", rank_);
+  TracingGuard tracingGuard(name_, comm_size_, "init", rank_, sequence_number_);
 
   TC_LOG(INFO, this) << "ProcessGroupXCCL (" << kBackendName
                      << ") initialized from split for rank: " << rank_;
@@ -600,7 +600,7 @@ c10::intrusive_ptr<WorkXCCL> ProcessGroupXCCL::sendImpl(
   ensureTensorContiguous(tensor);
   checkTensorDevice(tensor);
 
-  TracingGuard tracingGuard(name_, comm_size_, "send", dst, tensor, tensor);
+  TracingGuard tracingGuard(name_, comm_size_, "send", dst, sequence_number_, tensor, tensor);
 
   c10::xpu::XPUStream stream = getOperationStream(async_op);
   auto work = async_op ? createWork(stream, timeout, tensor)
@@ -644,7 +644,8 @@ c10::intrusive_ptr<WorkXCCL> ProcessGroupXCCL::recvImpl(
   ensureTensorContiguous(tensor);
   checkTensorDevice(tensor);
 
-  TracingGuard tracingGuard(name_, comm_size_, "recv", src, tensor, tensor);
+  TracingGuard tracingGuard(
+      name_, comm_size_, "recv", src, sequence_number_, tensor, tensor);
 
   c10::xpu::XPUStream stream = getOperationStream(async_op);
   auto work = createWork(stream, timeout);
@@ -710,6 +711,7 @@ c10::intrusive_ptr<WorkXCCL> ProcessGroupXCCL::batch_op_issue(
       comm_size_,
       "batch_op_issue",
       rank_,
+      sequence_number_,
       input_tensors,
       output_tensors);
 
@@ -799,7 +801,7 @@ c10::intrusive_ptr<WorkXCCL> ProcessGroupXCCL::broadcastImpl(
   checkTensorDevice(tensor);
 
   TracingGuard tracingGuard(
-      name_, comm_size_, "broadcast", root, tensor, tensor);
+      name_, comm_size_, "broadcast", root, sequence_number_, tensor, tensor);
 
   c10::xpu::XPUStream stream = getOperationStream(async_op);
 
@@ -839,7 +841,7 @@ c10::intrusive_ptr<WorkXCCL> ProcessGroupXCCL::all_reduce(
   checkTensorDevice(tensor);
 
   TracingGuard tracingGuard(
-      name_, comm_size_, "all_reduce", rank_, tensor, tensor);
+      name_, comm_size_, "all_reduce", rank_, sequence_number_, tensor, tensor);
 
   c10::xpu::XPUStream stream = getOperationStream(async_op);
   auto work = async_op ? createWork(stream, timeout, tensor)
@@ -898,7 +900,8 @@ c10::intrusive_ptr<WorkXCCL> ProcessGroupXCCL::reduceImpl(
   ensureTensorContiguous(tensor);
   checkTensorDevice(tensor);
 
-  TracingGuard tracingGuard(name_, comm_size_, "reduce", root, tensor, tensor);
+  TracingGuard tracingGuard(
+      name_, comm_size_, "reduce", root, sequence_number_, tensor, tensor);
 
   c10::xpu::XPUStream stream = getOperationStream(async_op);
 
@@ -969,7 +972,7 @@ c10::intrusive_ptr<WorkXCCL> ProcessGroupXCCL::all_gather(
   checkSameDtype(tensor, tensor_list);
 
   TracingGuard tracingGuard(
-      name_, comm_size_, "all_gather", rank_, tensor_list, {tensor});
+      name_, comm_size_, "all_gather", rank_, sequence_number_, tensor_list, {tensor});
 
   c10::xpu::XPUStream stream = getOperationStream(async_op);
 
@@ -1062,7 +1065,7 @@ c10::intrusive_ptr<WorkXCCL> ProcessGroupXCCL::allGatherSingleImpl(
   }
 
   TracingGuard tracingGuard(
-      name_, comm_size_, "allGatherSingleImpl", rank_, input, output);
+      name_, comm_size_, "allGatherSingleImpl", rank_, sequence_number_, input, output);
 
   c10::xpu::XPUStream stream = getOperationStream(async_op);
 
@@ -1121,7 +1124,7 @@ c10::intrusive_ptr<WorkXCCL> ProcessGroupXCCL::reduce_scatter(
   checkSameDtype(output, input_list);
 
   TracingGuard tracingGuard(
-      name_, comm_size_, "reduce_scatter", rank_, input_list, {output});
+      name_, comm_size_, "reduce_scatter", rank_, sequence_number_, input_list, {output});
 
   c10::xpu::XPUStream stream = getOperationStream(async_op);
 
@@ -1231,7 +1234,7 @@ c10::intrusive_ptr<WorkXCCL> ProcessGroupXCCL::reduceScatterSingleImpl(
   }
 
   TracingGuard tracingGuard(
-      name_, comm_size_, "reduceScatterSingleImpl", rank_, input, output);
+      name_, comm_size_, "reduceScatterSingleImpl", rank_, sequence_number_, input, output);
 
   c10::xpu::XPUStream stream = getOperationStream(async_op);
 
@@ -1292,7 +1295,7 @@ c10::intrusive_ptr<WorkXCCL> ProcessGroupXCCL::allToAllSingleImpl(
   }
 
   TracingGuard tracingGuard(
-      name_, comm_size_, "allToAllSingleImpl", rank_, input, output);
+      name_, comm_size_, "allToAllSingleImpl", rank_, sequence_number_, input, output);
 
   c10::xpu::XPUStream stream = getOperationStream(async_op);
 
@@ -1369,7 +1372,7 @@ c10::intrusive_ptr<WorkXCCL> ProcessGroupXCCL::all_to_all_v_single(
   }
 
   TracingGuard tracingGuard(
-      name_, comm_size_, "all_to_all_v_single", rank_, input, output);
+      name_, comm_size_, "all_to_all_v_single", rank_, sequence_number_, input, output);
 
   c10::xpu::XPUStream stream = getOperationStream(async_op);
   auto work = async_op ? createWork(stream, timeout, input)
@@ -1523,6 +1526,7 @@ c10::intrusive_ptr<WorkXCCL> ProcessGroupXCCL::all_to_all(
       comm_size_,
       "all_to_all",
       rank_,
+      sequence_number_,
       input_tensor_list,
       output_tensor_list);
 
@@ -1599,7 +1603,7 @@ c10::intrusive_ptr<WorkXCCL> ProcessGroupXCCL::barrierImpl(
   checkInitialized();
   checkAndAbortIfTimedOutOrError();
 
-  TracingGuard tracingGuard(name_, comm_size_, "barrier", rank_);
+  TracingGuard tracingGuard(name_, comm_size_, "barrier", rank_, sequence_number_);
 
   c10::xpu::XPUStream stream = getOperationStream(async_op);
   auto work = createWork(stream, timeout);
@@ -1662,7 +1666,7 @@ c10::intrusive_ptr<WorkXCCL> ProcessGroupXCCL::scatterImpl(
   }
 
   TracingGuard tracingGuard(
-      name_, comm_size_, "scatter", root, input_tensor_list, {output_tensor});
+      name_, comm_size_, "scatter", root, sequence_number_, input_tensor_list, {output_tensor});
 
   c10::xpu::XPUStream stream = getOperationStream(async_op);
   std::vector<at::Tensor> input_tensors;
@@ -1772,7 +1776,7 @@ c10::intrusive_ptr<WorkXCCL> ProcessGroupXCCL::gatherImpl(
   }
 
   TracingGuard tracingGuard(
-      name_, comm_size_, "gather", root, {input_tensor}, output_tensor_list);
+      name_, comm_size_, "gather", root, sequence_number_, {input_tensor}, output_tensor_list);
 
   c10::xpu::XPUStream stream = getOperationStream(async_op);
 

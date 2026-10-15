@@ -202,7 +202,7 @@ void WorkXCCL::synchronizeInternal() {
   }
 
   TracingGuard tracingGuard(
-      comm_info_.name, comm_info_.size, "wait", comm_info_.rank);
+      comm_info_.name, comm_info_.size, "wait", comm_info_.rank, seq_);
 
   // Make the current stream wait for the end event recorded on the work's
   // stream, ordering subsequent current-stream ops after this collective.

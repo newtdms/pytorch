@@ -162,6 +162,7 @@ class WorkXCCL : public c10d::Work {
   c10::xpu::XPUStream stream_; // not owned by this class
 
   std::chrono::milliseconds timeout_ms_;
+  uint64_t seq_{0};
 
   std::atomic<WorkStatus> status_{WorkStatus::NOT_STARTED};
   std::optional<std::chrono::steady_clock::time_point> start_completed_time_;
