@@ -415,7 +415,7 @@ class TORCH_API ProcessGroupXCCL : public ::c10d::Backend {
       const ::c10d::ReduceOp& op,
       bool async_op,
       std::chrono::milliseconds timeout);
-  c10::intrusive_ptr<WorkXCCL> reduceScatterSingleImpl(
+  c10::intrusive_ptr<WorkXCCL> reduce_scatter_single(
       at::Tensor& output,
       const at::Tensor& input,
       const ::c10d::ReduceOp& op,

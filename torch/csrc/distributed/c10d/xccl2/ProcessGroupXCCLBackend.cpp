@@ -568,7 +568,7 @@ c10::intrusive_ptr<::c10d::Work> ProcessGroupXCCL::
   std::vector<c10::intrusive_ptr<WorkXCCL>> works;
   works.reserve(outputs.size());
   for (const auto i : c10::irange(outputs.size())) {
-    works.push_back(reduceScatterSingleImpl(
+    works.push_back(reduce_scatter_single(
         outputs.at(i),
         inputs.at(i),
         opts.reduceOp,
@@ -588,7 +588,7 @@ c10::intrusive_ptr<::c10d::Work> ProcessGroupXCCL::_reduce_scatter_base(
     const ::c10d::ReduceScatterOptions& opts) {
   ensureInitialized(outputBuffer.device());
   ++sequence_number_;
-  auto work = reduceScatterSingleImpl(
+  auto work = reduce_scatter_single(
       outputBuffer,
       inputBuffer,
       opts.reduceOp,

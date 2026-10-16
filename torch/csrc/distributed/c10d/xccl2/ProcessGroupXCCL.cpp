@@ -1214,7 +1214,7 @@ c10::intrusive_ptr<WorkXCCL> ProcessGroupXCCL::reduce_scatter(
   return work;
 }
 
-c10::intrusive_ptr<WorkXCCL> ProcessGroupXCCL::reduceScatterSingleImpl(
+c10::intrusive_ptr<WorkXCCL> ProcessGroupXCCL::reduce_scatter_single(
     at::Tensor& output,
     const at::Tensor& input,
     const ::c10d::ReduceOp& op,
